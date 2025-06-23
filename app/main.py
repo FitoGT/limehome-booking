@@ -34,3 +34,17 @@ def create_booking(booking: schemas.BookingBase, db: Session = Depends(get_db)):
     except UnableToBook as unable_to_book:
         raise HTTPException(status_code=HTTPStatus.BAD_REQUEST,
                             detail=str(unable_to_book))
+
+
+@app.patch("/api/v1/booking/{booking_id}/extend", response_model=schemas.BookingBase)
+async def patch_extend_booking(
+    booking_id: int,
+    request: schemas.ExtendBookingRequest,
+    db: Session = Depends(get_db)
+):
+    try:
+        updated = crud.extend_booking(db, booking_id, request.extra_nights)
+        return updated
+    except crud.UnableToExtend as err:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST, detail=str(err))
