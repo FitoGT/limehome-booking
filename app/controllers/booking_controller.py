@@ -3,7 +3,8 @@ from http import HTTPStatus
 from sqlalchemy.orm import Session
 
 from app.schemas.bookings_schemas import BookingBase, ExtendBookingRequest
-from app.services.booking_service import BookingService, UnableToBook, UnableToExtend
+from app.services.booking_service import BookingService
+from app.services.exceptions import UnableToBook, UnableToExtend
 from app.db.database import get_db
 
 router = APIRouter(
