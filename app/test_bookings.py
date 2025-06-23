@@ -13,7 +13,8 @@ SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
 )
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+TestingSessionLocal = sessionmaker(
+    autocommit=False, autoflush=False, bind=engine)
 
 Base.metadata.create_all(bind=engine)
 
@@ -78,7 +79,8 @@ def test_same_guest_same_unit_booking(test_db):
         json=GUEST_A_UNIT_1
     )
     assert response.status_code == 400, response.text
-    assert response.json()['detail'] == 'The given guest name cannot book the same unit multiple times'
+    assert response.json()[
+        'detail'] == 'The given guest name cannot book the same unit multiple times'
 
 
 @pytest.mark.freeze_time('2023-05-21')
@@ -96,7 +98,8 @@ def test_same_guest_different_unit_booking(test_db):
         json=GUEST_A_UNIT_2
     )
     assert response.status_code == 400, response.text
-    assert response.json()['detail'] == 'The same guest cannot be in multiple units at the same time'
+    assert response.json()[
+        'detail'] == 'The same guest cannot be in multiple units at the same time'
 
 
 @pytest.mark.freeze_time('2023-05-21')
@@ -114,15 +117,24 @@ def test_different_guest_same_unit_booking(test_db):
         json=GUEST_B_UNIT_1
     )
     assert response.status_code == 400, response.text
-    assert response.json()['detail'] == 'For the given check-in date, the unit is already occupied'
+    assert response.json()[
+        'detail'] == 'For the given check-in date, the unit is already occupied'
 
 
 @pytest.mark.freeze_time('2023-05-21')
 def test_different_guest_same_unit_booking_different_date(test_db):
     # Create first booking
+    # Create the payload inside the test in order to freeze_time wraps date.today();
+    # module‐level date.today() executes at import and wont be frozen.
+    guest_a = {
+        'unit_id': '1',
+        'guest_name': 'GuestA',
+        'check_in_date': datetime.date.today().isoformat(),
+        'number_of_nights': 5
+    }
     response = client.post(
         "/api/v1/booking",
-        json=GUEST_A_UNIT_1
+        json=guest_a
     )
     assert response.status_code == 200, response.text
 
@@ -138,4 +150,5 @@ def test_different_guest_same_unit_booking_different_date(test_db):
         }
     )
     assert response.status_code == 400, response.text
-    assert response.json()['detail'] == 'For the given check-in date, the unit is already occupied'
+    assert response.json()[
+        'detail'] == 'For the given check-in date, the unit is already occupied'
