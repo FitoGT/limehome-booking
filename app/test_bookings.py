@@ -31,16 +31,24 @@ app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
 
-GUEST_A_UNIT_1: dict = {
-    'unit_id': '1', 'guest_name': 'GuestA', 'check_in_date': datetime.date.today().strftime('%Y-%m-%d'),
+TEST_DATE = "2023-05-21"
+
+GUEST_A_UNIT_1 = {
+    'unit_id': '1',
+    'guest_name': 'GuestA',
+    'check_in_date': TEST_DATE,
     'number_of_nights': 5
 }
-GUEST_A_UNIT_2: dict = {
-    'unit_id': '2', 'guest_name': 'GuestA', 'check_in_date': datetime.date.today().strftime('%Y-%m-%d'),
+GUEST_A_UNIT_2 = {
+    'unit_id': '2',
+    'guest_name': 'GuestA',
+    'check_in_date': TEST_DATE,
     'number_of_nights': 5
 }
-GUEST_B_UNIT_1: dict = {
-    'unit_id': '1', 'guest_name': 'GuestB', 'check_in_date': datetime.date.today().strftime('%Y-%m-%d'),
+GUEST_B_UNIT_1 = {
+    'unit_id': '1',
+    'guest_name': 'GuestB',
+    'check_in_date': TEST_DATE,
     'number_of_nights': 5
 }
 
@@ -152,3 +160,73 @@ def test_different_guest_same_unit_booking_different_date(test_db):
     assert response.status_code == 400, response.text
     assert response.json()[
         'detail'] == 'For the given check-in date, the unit is already occupied'
+
+
+@pytest.mark.freeze_time('2023-05-21')
+def test_extend_booking_successful(test_db):
+    response = client.post(
+        "/api/v1/booking",
+        json=GUEST_A_UNIT_1
+    )
+    assert response.status_code == 200, response.text
+    response = client.patch(
+        "/api/v1/booking/1/extend",
+        json={"extra_nights": 3}
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data["number_of_nights"] == 8
+    assert data["check_out_date"] == "2023-05-29"
+
+
+@pytest.mark.freeze_time('2023-05-21')
+def test_extend_booking_not_found(test_db):
+    response = client.patch(
+        "/api/v1/booking/999/extend",
+        json={"extra_nights": 1}
+    )
+    assert response.status_code == 400, response.text
+    assert response.json()["detail"] == "Booking id=999 not found"
+
+
+@pytest.mark.freeze_time('2023-05-21')
+def test_extend_booking_conflict(test_db):
+    response = client.post(
+        "/api/v1/booking",
+        json=GUEST_A_UNIT_1
+    )
+    assert response.status_code == 200, response.text
+    booking_b = {
+        "unit_id": "1",
+        "guest_name": "GuestB",
+        "check_in_date": "2023-05-26",
+        "number_of_nights": 2
+    }
+    response = client.post(
+        "/api/v1/booking",
+        json=booking_b
+    )
+    assert response.status_code == 200, response.text
+    response = client.patch(
+        "/api/v1/booking/1/extend",
+        json={"extra_nights": 2}
+    )
+    assert response.status_code == 400, response.text
+    assert response.json()[
+        "detail"] == "Extension conflicts with another booking"
+
+
+@pytest.mark.freeze_time('2023-05-21')
+def test_extend_booking_invalid_extra_nights(test_db):
+    response = client.post(
+        "/api/v1/booking",
+        json=GUEST_A_UNIT_1
+    )
+    assert response.status_code == 200, response.text
+    response = client.patch(
+        "/api/v1/booking/1/extend",
+        json={"extra_nights": 0}
+    )
+    assert response.status_code == 422, response.text
+    assert any(err["loc"][-1] ==
+               "extra_nights" for err in response.json()["detail"])

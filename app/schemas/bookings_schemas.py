@@ -21,3 +21,11 @@ class ExtendBookingRequest(BaseModel):
         schema_extra = {
             "example": {"extra_nights": 3}
         }
+
+
+class BookingResponse(BookingBase):
+    id: int
+    check_out_date: datetime.date
+
+    class Config:
+        orm_mode = True
