@@ -1,7 +1,7 @@
 from typing import Tuple
+from datetime import timedelta, date
 
 from sqlalchemy.orm import Session
-
 from . import models, schemas
 
 
@@ -10,12 +10,18 @@ class UnableToBook(Exception):
 
 
 def create_booking(db: Session, booking: schemas.BookingBase) -> models.Booking:
-    (is_possible, reason) = is_booking_possible(db=db, booking=booking)
-    if not is_possible:
+    ok, reason = is_booking_possible(db, booking)
+    if not ok:
         raise UnableToBook(reason)
+
     db_booking = models.Booking(
-        guest_name=booking.guest_name, unit_id=booking.unit_id,
-        check_in_date=booking.check_in_date, number_of_nights=booking.number_of_nights)
+        guest_name=booking.guest_name,
+        unit_id=booking.unit_id,
+        check_in_date=booking.check_in_date,
+        number_of_nights=booking.number_of_nights,
+        check_out_date=booking.check_in_date +
+        timedelta(days=booking.number_of_nights),
+    )
     db.add(db_booking)
     db.commit()
     db.refresh(db_booking)
@@ -23,24 +29,22 @@ def create_booking(db: Session, booking: schemas.BookingBase) -> models.Booking:
 
 
 def is_booking_possible(db: Session, booking: schemas.BookingBase) -> Tuple[bool, str]:
-    # check 1 : The Same guest cannot book the same unit multiple times
-    is_same_guest_booking_same_unit = db.query(models.Booking) \
-        .filter_by(guest_name=booking.guest_name, unit_id=booking.unit_id).first()
 
-    if is_same_guest_booking_same_unit:
-        return False, 'The given guest name cannot book the same unit multiple times'
+    new_start = booking.check_in_date
+    new_end = new_start + timedelta(days=booking.number_of_nights)
 
-    # check 2 : the same guest cannot be in multiple units at the same time
-    is_same_guest_already_booked = db.query(models.Booking) \
-        .filter_by(guest_name=booking.guest_name).first()
-    if is_same_guest_already_booked:
-        return False, 'The same guest cannot be in multiple units at the same time'
+    guests = db.query(models.Booking).all()
 
-    # check 3 : Unit is available for the check-in date
-    is_unit_available_on_check_in_date = db.query(models.Booking) \
-        .filter_by(check_in_date=booking.check_in_date, unit_id=booking.unit_id).first()
+    for guest in guests:
+        guest_start = guest.check_in_date
+        guest_end = guest_start + timedelta(days=guest.number_of_nights)
 
-    if is_unit_available_on_check_in_date:
-        return False, 'For the given check-in date, the unit is already occupied'
+        if not (new_end <= guest_start or guest_end <= new_start):
+            if guest.guest_name == booking.guest_name and guest.unit_id == booking.unit_id:
+                return False, 'The given guest name cannot book the same unit multiple times'
+            if guest.guest_name == booking.guest_name and guest.unit_id != booking.unit_id:
+                return False, 'The same guest cannot be in multiple units at the same time'
+            if guest.guest_name != booking.guest_name and guest.unit_id == booking.unit_id:
+                return False, 'For the given check-in date, the unit is already occupied'
 
     return True, 'OK'
