@@ -5,14 +5,7 @@ from sqlalchemy.orm import Session
 from app.models.bookings import Booking
 from app.schemas.bookings_schemas import BookingBase
 from app.repositories.booking_repository import BookingRepository
-
-
-class UnableToBook(Exception):
-    pass
-
-
-class UnableToExtend(Exception):
-    pass
+from app.services.exceptions import UnableToBook, UnableToExtend
 
 
 class BookingService:

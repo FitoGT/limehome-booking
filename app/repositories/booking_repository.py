@@ -26,12 +26,10 @@ class BookingRepository:
             q = q.filter(Booking.id != exclude_id)
         return q.all()
 
-    def find_guest_overlaps(self, guest_name: str, start: date, end: date, exclude_id: int = None):
+    def find_guest_overlaps(self, guest_name: str, start: date, end: date):
         q = self.db.query(Booking).filter(
             Booking.guest_name == guest_name,
             Booking.check_in_date < end,
             Booking.check_out_date > start,
         )
-        if exclude_id:
-            q = q.filter(Booking.id != exclude_id)
         return q.all()
