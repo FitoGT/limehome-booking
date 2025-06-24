@@ -11,10 +11,18 @@ from app.services.booking_service import BookingService
 from app.services.exceptions import UnableToBook, UnableToExtend
 from app.db.database import get_db
 
-router = APIRouter(prefix="/api/v1/booking", tags=["booking"])
+router = APIRouter(prefix="/api/v1/booking", tags=["Booking"])
 
 
-@router.post("", response_model=BookingResponse)
+@router.post(
+    "",
+    response_model=BookingResponse,
+    summary="Create a new booking",
+    description=(
+        "Creates a booking for a guest in a given unit. "
+        "Validates that there are no overlapping bookings for the same unit."
+    ),
+)
 async def post_booking(
     booking: BookingBase,
     db: Session = Depends(get_db)
@@ -25,7 +33,15 @@ async def post_booking(
         raise HTTPException(HTTPStatus.BAD_REQUEST, detail=str(err))
 
 
-@router.patch("/{booking_id}/extend", response_model=BookingResponse)
+@router.patch(
+    "/{booking_id}/extend",
+    response_model=BookingResponse,
+    summary="Extend an existing booking",
+    description=(
+        "Allows a guest to add extra nights to their current booking, "
+        "after validating availability for the extension period."
+    ),
+)
 async def patch_extend_booking(
     booking_id: int,
     request: ExtendBookingRequest,
